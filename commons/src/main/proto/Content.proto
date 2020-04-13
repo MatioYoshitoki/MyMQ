@@ -1,0 +1,12 @@
+syntax = "proto3";
+option java_package = "com.mymq.commons.protobuf";
+option java_outer_classname = "MyContentModule";
+
+message Content {
+    string topic = 1;
+    string tag = 2;
+    string msg = 3;
+    int32 type = 4;
+    int32 msgType = 5;
+    int64 msgID = 6;
+}
