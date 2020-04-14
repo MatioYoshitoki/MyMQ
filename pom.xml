@@ -18,7 +18,7 @@
         <protobuff.version>3.6.1</protobuff.version>
         <grpc.version>1.6.1</grpc.version>
         <lombok.version>1.18.12</lombok.version>
-        <netty.version>4.1.26.Final</netty.version>
+        <netty.version>4.1.42.Final</netty.version>
         <hutool.version>5.1.4</hutool.version>
         <log4j12.version>1.7.25</log4j12.version>
     </properties>
