@@ -1,13 +1,11 @@
 package com.mymq.client.client.produce;
 
-import com.mymq.commons.protobuf.MyContentModule;
 import com.mymq.client.client.ClientService;
 import com.mymq.client.client.MyClient;
+import com.mymq.client.client.builder.MyClientBuilder;
 import com.mymq.client.config.ClientConfig;
-import com.mymq.client.factory.ClientFactory;
-import com.mymq.commons.global.ClientType;
-import com.mymq.commons.global.DefaultHeartContent;
 import com.mymq.commons.pojo.Content;
+import com.mymq.commons.protobuf.MyContentModule;
 import com.mymq.commons.threadPools.ThreadPoolFactory;
 import com.mymq.commons.util.MessageConvertUtil;
 import lombok.extern.slf4j.Slf4j;
@@ -19,30 +17,10 @@ import java.util.concurrent.ExecutorService;
 public class ProduceImpl implements Produce {
 
     private final ExecutorService executor = ThreadPoolFactory.THREAD_POOL_FACTORY.getNormalPool(3, Runtime.getRuntime().availableProcessors() * 2, 120, 10);
-    private final MyClient client;
-    private final ClientFactory clientFactory;
-    private final boolean startFlag;
-    private final String key;
+    private MyClient client;
 
-    public ProduceImpl(ClientConfig clientConfig, ClientFactory clientFactory) {
-        this.client = MyClient.initClient(clientConfig, clientFactory);
-        this.clientFactory = clientFactory;
-        this.startFlag = client.start();
-        this.key = clientConfig.getHostName()+":"+clientConfig.getPort();
-        if (this.startFlag){
-            log.info("start success");
-            if (register()) {
-                log.info("register success");
-            } else {
-                log.info("already register");
-            }
-        }else {
-            log.error("start failed");
-        }
-    }
-
-    public boolean register(){
-        return clientFactory.registerClientHeart(key, ClientType.PRODUCE, DefaultHeartContent.DEFAULT_PRODUCE_HEART_CONTENT);
+    public ProduceImpl(ClientConfig clientConfig) throws InterruptedException {
+        this.client = new MyClientBuilder(clientConfig).build();//MyClient.createClient(clientConfig, clientFactory);
     }
 
 
@@ -61,7 +39,7 @@ public class ProduceImpl implements Produce {
 
     @Override
     public boolean isStarted() {
-        return this.startFlag;
+        return this.client!=null;
     }
 
 }

@@ -1,6 +1,7 @@
 package com.mymq.client.client.consumer;
 
 
+import com.mymq.client.client.builder.MyClientBuilder;
 import com.mymq.commons.protobuf.MyContentModule;
 import com.mymq.client.client.ClientService;
 import com.mymq.client.client.MyClient;
@@ -20,42 +21,42 @@ import java.util.concurrent.ExecutorService;
 @Slf4j
 public class ConsumerImpl implements Consumer {
 
-    private final ClientFactory clientFactory;
     private final String key;
     private final String keyWithTagTopic;
     private final MessageListener listener;
     private final String tag;
     private final String topic;
-    private final MyClient client;
+    private MyClient client;
     private final ExecutorService executor = ThreadPoolFactory.THREAD_POOL_FACTORY.getNormalPool(3, Runtime.getRuntime().availableProcessors() * 2, 120, 10);
-    private final boolean startFlag;
+//    private final boolean startFlag;
 
-    public ConsumerImpl(ClientConfig clientConfig, ClientFactory clientFactory, String key){
-        this.clientFactory = clientFactory;
+    public ConsumerImpl(ClientConfig clientConfig, String key) throws InterruptedException {
+
+        ClientFactory clientFactory = ClientFactory.getInstance();
+
         this.tag = clientConfig.getTag();
         this.topic = clientConfig.getTopic();
         this.listener = clientConfig.getListener();
         this.key = key;
         this.keyWithTagTopic = key+"_"+topic+"_"+tag;
-        this.client = MyClient.initClient(clientConfig, clientFactory);
-        this.startFlag = this.client.start();
-        if (this.startFlag) {
+        this.client = new MyClientBuilder(clientConfig).build();//MyClient.createClient(clientConfig, clientFactory);
+
+        if (client!=null) {
             clientFactory.getConsumerMap().put(keyWithTagTopic, this);
             log.info("start success");
-            if (register()) {
-                log.info("register success");
-            } else {
-                log.info("register failed");
-            }
+//            if (register()) {
+//                log.info("register success");
+//            } else {
+//                log.info("register failed");
+//            }
         }else {
             log.error("start failed");
         }
     }
 
-    public boolean register(){
-
-        return clientFactory.registerClientHeart(key, ClientType.CONSUMER, DefaultHeartContent.DEFAULT_CONSUMER_HEART_CONTENT);
-    }
+//    public boolean register(){
+//        return ClientFactory.getInstance().registerClientHeart(key, ClientType.CONSUMER, DefaultHeartContent.DEFAULT_CONSUMER_HEART_CONTENT);
+//    }
 
     public String getTag() {
         return tag;
@@ -94,6 +95,6 @@ public class ConsumerImpl implements Consumer {
 
     @Override
     public boolean isStarted() {
-        return this.startFlag;
+        return client!=null;
     }
 }

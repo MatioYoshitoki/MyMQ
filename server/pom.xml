@@ -15,30 +15,22 @@
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-assembly-plugin</artifactId>
-                <configuration>
-                    <archive>
-                        <manifest>
-                            <addClasspath>true</addClasspath>
-                            <mainClass>com.mymq.server.example.ServerExample</mainClass>
-                            <classpathPrefix>lib/</classpathPrefix>
-                        </manifest>
-                    </archive>
-                    <descriptorRefs>
-                        <descriptorRef>jar-with-dependencies</descriptorRef>
-                    </descriptorRefs>
-                </configuration>
-                <version>2.6</version>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <configuration>
                     <source>1.8</source>
                     <target>1.8</target>
                 </configuration>
             </plugin>
-
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-assembly-plugin</artifactId>
+                <configuration>
+                    <descriptorRefs>
+                        <descriptorRef>jar-with-dependencies</descriptorRef>
+                    </descriptorRefs>
+                </configuration>
+                <version>2.6</version>
+            </plugin>
         </plugins>
     </build>
     <dependencies>
@@ -58,6 +50,10 @@
             <groupId>com.mymq</groupId>
             <artifactId>commons</artifactId>
             <version>1.0</version>
+        </dependency>
+        <dependency>
+            <groupId>com.google.protobuf</groupId>
+            <artifactId>protobuf-java</artifactId>
         </dependency>
     </dependencies>
 

@@ -52,7 +52,7 @@ public class ActiveChannelQueue {
         if (len.get()<=nowIndex.get()){
             nowIndex.set(-1);
         }
-
+        log.info("channelSize="+channelSet.size());
 
         while (iterator.hasNext()){
             Channel channel = iterator.next();
@@ -60,7 +60,6 @@ public class ActiveChannelQueue {
 //                MyContentModule.Content result = MyContentModule.Content.newBuilder().setTag(content.getTag()).setTopic(content.getTopic()).setMsg(content.getMsg()).setType(3).setMsgType(3).build();
                 Content result = new Content(content.getTag(), content.getTopic(), content.getMsg(), 3, 3, SnowFlakeUtil.next());
                 channel.writeAndFlush(MessageConvertUtil.toSend(result));
-                log.info("当前nowIndex:"+nowIndex.get()+"\n当前flag:"+flag+"\n当前len:"+len.get());
                 flag++;
                 nowIndex.set(flag);
                 break;

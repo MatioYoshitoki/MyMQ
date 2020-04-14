@@ -29,4 +29,8 @@ public class ClientConfig {
     private String topic;
     private MessageListener listener;
 
+
+    public String getKey(){
+        return this.hostName+":"+this.port;
+    }
 }

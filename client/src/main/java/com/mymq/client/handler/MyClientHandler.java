@@ -15,6 +15,7 @@ import io.netty.handler.timeout.IdleStateEvent;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -30,7 +31,6 @@ public class MyClientHandler extends SimpleChannelInboundHandler<MyContentModule
     //是否处于重连之中
     public volatile static AtomicBoolean connectFlag = new AtomicBoolean(false);
 
-    private final ClientFactory clientFactory;
     private final String key;
     private Channel channel;
     private long msgID;
@@ -44,8 +44,7 @@ public class MyClientHandler extends SimpleChannelInboundHandler<MyContentModule
     private final Condition condition = lock.newCondition();
 
 
-    public MyClientHandler(ClientFactory clientFactory, String key){
-        this.clientFactory = clientFactory;
+    public MyClientHandler(String key){
         this.key = key;
         this.status = new AtomicReference<>(ServiceStatus.DEAD);
         this.disconnectHandler = new DefaultDisconnectHandler(status);
@@ -55,8 +54,7 @@ public class MyClientHandler extends SimpleChannelInboundHandler<MyContentModule
         return status;
     }
 
-    public MyClientHandler(ClientFactory clientFactory, String key, Runnable runnable){
-        this.clientFactory = clientFactory;
+    public MyClientHandler(String key, Runnable runnable){
         this.key = key;
         this.status = new AtomicReference<>(ServiceStatus.DEAD);
         this.disconnectHandler = runnable;
@@ -70,7 +68,7 @@ public class MyClientHandler extends SimpleChannelInboundHandler<MyContentModule
     @Override
     public void handlerAdded(ChannelHandlerContext ctx) {
         this.channel = ctx.channel();
-        clientFactory.getChannelMap().computeIfAbsent(key, k -> this.channel);
+        ClientFactory.getInstance().getChannelMap().computeIfAbsent(key, k -> this.channel);
         status.compareAndSet(ServiceStatus.DEAD, ServiceStatus.RUNNING);
     }
 
@@ -104,7 +102,7 @@ public class MyClientHandler extends SimpleChannelInboundHandler<MyContentModule
             String topic = msg.getTopic();
             String tag = msg.getTag();
             String con = msg.getMsg();
-            clientFactory.getConsumerMap().forEach((s, consumer) -> {
+            ClientFactory.getInstance().getConsumerMap().forEach((s, consumer) -> {
                 if (consumer.getTopic().equals(topic) && consumer.getTag().equals(tag)){
                     consumer.getListener().consumer(tag, topic, con);
                 }
@@ -121,15 +119,15 @@ public class MyClientHandler extends SimpleChannelInboundHandler<MyContentModule
 //                boolean removeResult = ActiveChannelQueue.activeChannelQueue.remove(ctx.channel());
 //                log.info(removeResult ? "从消费者列表移除成功" : "从消费者列表移除失败");
                 String addr = ctx.channel().remoteAddress().toString();
-                if (clientFactory.getChannelMap().get(addr)!=null) {
-                    clientFactory.getChannelMap().remove(addr);
+                if (ClientFactory.getInstance().getChannelMap().get(addr)!=null) {
+                    ClientFactory.getInstance().getChannelMap().remove(addr);
                 }
                 ctx.close();
             }else if(idleStateEvent.state()==IdleState.WRITER_IDLE){
-                List<String> keyMap = clientFactory.getKeyMap().get(key);
+                Set<String> keyMap = ClientFactory.getInstance().getKeyMap().get(key);
                 if (keyMap!=null) {
                     for (String subKey : keyMap) {
-                        Content content = clientFactory.getHeartMap().get(subKey);
+                        Content content = ClientFactory.getInstance().getHeartMap().get(subKey);
                         content.setMsgID(SnowFlakeUtil.next());
                         ctx.writeAndFlush(MessageConvertUtil.toSend(content));
                     }
@@ -152,7 +150,7 @@ public class MyClientHandler extends SimpleChannelInboundHandler<MyContentModule
             if (!success){
                 return null;
             }
-        }catch (Exception e){
+        }catch (Exception ignored){
         }finally {
             lock.unlock();
         }

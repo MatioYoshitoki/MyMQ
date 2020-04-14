@@ -33,21 +33,21 @@ public class ServerHandler extends SimpleChannelInboundHandler<MyContentModule.C
             case 0://普通消息
                 if (msgType==0){
                     //生产消息
-
                     Content localContent = MessageConvertUtil.toRead(content);
                     int count = MyQueue.mqQueues.add(localContent);
                     Content heartResult = new Content(3, 1);
                     heartResult.setMsgID(content.getMsgID());
                     channelHandlerContext.channel().writeAndFlush(MessageConvertUtil.toSend(heartResult));
+                    log.info("queue count="+count);
                 }
                 break;
             case 1://心跳消息
                 MyContentModule.Content heartResult = MyContentModule.Content.newBuilder().setMsg("收到心跳").setType(2).setMsgType(2).setMsgID(content.getMsgID()).build();
                 channelHandlerContext.channel().writeAndFlush(heartResult);
-                System.out.println("返回消息: msgID="+heartResult.getMsgID()+"\tmsg="+heartResult.getMsg());
+                log.info("return: msgID="+heartResult.getMsgID()+"\tmsg="+heartResult.getMsg());
                 if (msgType==1){
                     boolean registerResult = ActiveChannelQueue.activeChannelQueue.register(channelHandlerContext.channel());
-                    log.info(registerResult?"注册成功":"注册失败");
+                    log.info(registerResult?"register success!":"register failed!!!");
                 }
                 break;
             default:

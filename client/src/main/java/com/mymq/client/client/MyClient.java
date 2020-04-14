@@ -2,7 +2,6 @@ package com.mymq.client.client;
 
 import com.mymq.commons.protobuf.MyContentModule;
 import com.mymq.client.config.ClientConfig;
-import com.mymq.client.factory.ClientFactory;
 import com.mymq.client.handler.MyClientHandler;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.*;
@@ -22,20 +21,22 @@ import java.util.concurrent.locks.ReentrantLock;
 @Slf4j
 public class MyClient {
 
+
     private final String key;
     private final Lock lock ;
+    //相关配置
+    private final ClientConfig clientConfig;
+//    private final ClientFactory clientFactory;
+
+    //netty相关
     private final Bootstrap bootstrap;
     private final EventLoopGroup group;
-    private final ClientConfig clientConfig;
-    private final ClientFactory clientFactory;
-
     public MyClientHandler myClientHandler;
 
 
-    private MyClient(ClientConfig clientConfig, String key, ClientFactory clientFactory){
+    public MyClient(ClientConfig clientConfig){
         this.clientConfig = clientConfig;
-        this.clientFactory = clientFactory;
-        this.key = key;
+        this.key = clientConfig.getHostName()+":"+clientConfig.getPort();
         this.lock = new ReentrantLock();
         bootstrap = new Bootstrap();
         if (clientConfig.getWorkerEvenLoopGroupSize()!=0){
@@ -46,68 +47,72 @@ public class MyClient {
 
     }
 
-
-    public static MyClient initClient(ClientConfig clientConfig, ClientFactory clientFactory){
-        String key = clientConfig.getHostName() + ":" + clientConfig.getPort();
-        MyClient client = clientFactory.getClientMap().get(key);
-        if (client==null){
-            client = new MyClient(clientConfig, key, clientFactory);
-        }
-        return client;
+    public String getKey() {
+        return key;
     }
 
-    public boolean start() {
-        if (clientFactory.getChannelMap().containsKey(key)){
-            return true;
-        }
-        boolean result;
+    //    public static MyClient createClient(ClientConfig clientConfig, ClientFactory clientFactory){
+//        String key = clientConfig.getHostName() + ":" + clientConfig.getPort();
+//        MyClient client = clientFactory.getClientMap().get(key);
+//        if (client==null){
+//            client = new MyClient(clientConfig, key, clientFactory);
+//        }
+//        return client;
+//    }
+
+    public void init() {
+//        if (clientFactory.getChannelMap().containsKey(key)){
+//            return true;
+//        }
+//        boolean result;
         lock.lock();
         try {
-            if (!clientFactory.getChannelMap().containsKey(key)) {
-                bootstrap
-                        .group(group)
-                        .channel(NioSocketChannel.class)
-                        .option(ChannelOption.TCP_NODELAY, true)
-                        .option(ChannelOption.SO_KEEPALIVE, false)
-                        .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, clientConfig.getConnectTimeMillis())
-                        .option(ChannelOption.SO_SNDBUF, clientConfig.getClientSocketSndBufSize())
-                        .option(ChannelOption.SO_RCVBUF, clientConfig.getClientSocketRcvBufSize())
-                        .handler(new ChannelInitializer<SocketChannel>() {
-                            @Override
-                            protected void initChannel(SocketChannel ch) {
-                                ChannelPipeline pipeline = ch.pipeline();
-                                myClientHandler = new MyClientHandler(clientFactory, key);
-                                pipeline.addLast(new ProtobufVarint32FrameDecoder());
-                                pipeline.addLast(new ProtobufVarint32LengthFieldPrepender());
-                                pipeline.addLast(new ProtobufDecoder(MyContentModule.Content.getDefaultInstance()));
-                                pipeline.addLast(new ProtobufEncoder());
-                                pipeline.addLast(new IdleStateHandler(0, 5, clientConfig.getAllIdleTimeSeconds()));
-                                pipeline.addLast(myClientHandler);
-                            }
-                        });
-                this.start0();
-            }
-            result = true;
+//            if (!clientFactory.getChannelMap().containsKey(key)) {
+            bootstrap
+                    .group(group)
+                    .channel(NioSocketChannel.class)
+                    .option(ChannelOption.TCP_NODELAY, true)
+                    .option(ChannelOption.SO_KEEPALIVE, false)
+                    .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, clientConfig.getConnectTimeMillis())
+                    .option(ChannelOption.SO_SNDBUF, clientConfig.getClientSocketSndBufSize())
+                    .option(ChannelOption.SO_RCVBUF, clientConfig.getClientSocketRcvBufSize())
+                    .handler(new ChannelInitializer<SocketChannel>() {
+                        @Override
+                        protected void initChannel(SocketChannel ch) {
+                            ChannelPipeline pipeline = ch.pipeline();
+                            myClientHandler = new MyClientHandler(key);
+                            pipeline.addLast(new ProtobufVarint32FrameDecoder());
+                            pipeline.addLast(new ProtobufVarint32LengthFieldPrepender());
+                            pipeline.addLast(new ProtobufDecoder(MyContentModule.Content.getDefaultInstance()));
+                            pipeline.addLast(new ProtobufEncoder());
+                            pipeline.addLast(new IdleStateHandler(0, 5, clientConfig.getAllIdleTimeSeconds()));
+                            pipeline.addLast(myClientHandler);
+                        }
+                    });
+//            this.start0();
+//            }
+//            result = true;
         }catch (Exception e){
             log.info("start failed");
-            result = false;
+//            result = false;
         }finally {
             lock.unlock();
         }
-        return result;
     }
 
-    public void start0() throws InterruptedException {
-        lock.lock();
-        try {
-            if (bootstrap!=null) {
+    public MyClient start0() throws InterruptedException {
+        if (bootstrap!=null) {
+            lock.lock();
+            try {
                 ChannelFuture f = bootstrap.connect(clientConfig.getHostName(), clientConfig.getPort()).sync();
-                clientFactory.getChannelMap().put(key, f.channel());
-                clientFactory.getClientMap().put(key, this);
+//                f.channel().closeFuture().sync();
+//                clientFactory.getChannelMap().put(key, f.channel());
+//                clientFactory.getClientMap().put(key, this);
+            } finally {
+                lock.unlock();
             }
-        } finally {
-            lock.unlock();
         }
+        return this;
     }
 
 }

@@ -16,6 +16,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.*;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -26,7 +27,7 @@ public class ClientFactory {
     private static ClientFactory instance;
     private final Map<String, MyClient> clientMap;
     private final Map<String, Content> heartMap;
-    private final Map<String, List<String>> keyMap;
+    private final Map<String, Set<String>> keyMap;
 
     private final Map<String, ConsumerImpl> consumerMap;
     private final Map<String, Channel> channelMap ;
@@ -62,7 +63,7 @@ public class ClientFactory {
     }
 
 
-    public Consumer createConsumer(String topic, String tag, MessageListener listener, int port) {
+    public Consumer createConsumer(String topic, String tag, MessageListener listener, int port) throws InterruptedException {
         return new ConsumerImpl(
                 new ClientConfig(
                         DefaultProduceConfig.LOCAL_HOST,
@@ -79,113 +80,34 @@ public class ClientFactory {
                         topic,
                         listener
                 ),
-                this,
                 DefaultProduceConfig.LOCAL_HOST+":"+port
         );
     }
 
-//    public boolean registerConsumer(ConsumerImpl consumer){
-//        String keyWithTagTopic = consumer.getKeyWithTagTopic();
-//        if (consumerMap.get(keyWithTagTopic)!=null){
-//            return false;
-//        }
-//        try {
-//            consumerMap.put(keyWithTagTopic, consumer);
-//            log.info("注册心跳");
-//            publicExecutor.execute(() -> {
-//                Content heart = new Content();
-//                heart.setMsgID(SnowFlakeUtil.next());
-//                heart.setType(1);
-//                heart.setMsgType(1);
-//                for (;;) {
-//                    log.info("发送心跳");
-//                    try {
-//                        consumer.send(heart);
-//                    }catch (Exception e){
-//                        log.error("消息发送失败......");
-//                    }
-//
-//                    try {
-//                        TimeUnit.SECONDS.sleep(3);
-//                    } catch (InterruptedException e) {
-//                        e.printStackTrace();
-//                    }
-//                }
-//            });
-//        }catch (Exception e){
-//            e.printStackTrace();
-//        }
-//
-//        return true;
-//    }
-//
-//    public boolean registerProduce(ProduceImpl produce){
-//        try {
-//            log.info("注册produce心跳");
-//            publicExecutor.execute(()->{
-//                for (;;){
-//                    Content heart = new Content();
-//                    heart.setMsgID(SnowFlakeUtil.next());
-//                    heart.setType(1);
-//                    heart.setMsgType(0);
-//                    Content result = null;
-//                    try {
-//                        result = produce.send(heart);
-//                    } catch (Exception e) {
-//                        log.error("消息发送失败......");
-//                        e.printStackTrace();
-//                    }
-//                    if (result!=null) {
-//                        log.info("tag=" + result.getTag() + "\tmsgID=" + result.getMsgID() + "\tmsg=" + result.getMsg());
-//                    }
-//                    try{
-//                        TimeUnit.SECONDS.sleep(3);
-//                    }catch(InterruptedException e){
-//                        e.printStackTrace();
-//                    }
-//                }
-//            });
-//        }catch (Exception e){
-//            e.printStackTrace();
-//        }
-//        return true;
-//    }
 
-
-    public boolean registerClientHeart(String key, ClientType clientType, Content content){
+    public boolean registerClientHeart(MyClient client, ClientType clientType, Content content){
         try {
-            List<String> keyList = keyMap.get(key);
-            if (keyList==null){
+            String key = client.getKey();
+            Set<String> keySet = keyMap.get(key);
+            if (keySet==null){
                 lock.lock();
                 try {
-                    keyList = new CopyOnWriteArrayList<>();
+                    keySet = new CopyOnWriteArraySet<>();
                 }catch (Exception e){
                     e.printStackTrace();
                 }finally {
                     lock.unlock();
                 }
             }
-
             String subKey = key + "_" + clientType.getType();
-            keyList.add(subKey);
-            keyMap.put(key, keyList);
+            keySet.add(subKey);
+            keyMap.put(key, keySet);
             heartMap.put(subKey, content);
+            clientMap.put(key, client);
         }catch (Exception e){
             e.printStackTrace();
         }
         return true;
-    }
-
-    public Map<String, Content> getHeartMap() {
-        return heartMap;
-    }
-
-    public Map<String, List<String>> getKeyMap() {
-        return keyMap;
-    }
-
-    public Map<String, ConsumerImpl> getConsumerMap() {
-        return consumerMap;
     }
 
     public Produce createProduce(int port) throws Exception {
@@ -203,13 +125,26 @@ public class ClientFactory {
         Produce produce = null;
         lock.lock();
         try {
-            produce = new ProduceImpl(clientConfig, this);
+            produce = new ProduceImpl(clientConfig);
         }catch (Exception e){
             e.printStackTrace();
         }finally {
             lock.unlock();
         }
         return produce;
+    }
+
+
+    public Map<String, Content> getHeartMap() {
+        return heartMap;
+    }
+
+    public Map<String, Set<String>> getKeyMap() {
+        return keyMap;
+    }
+
+    public Map<String, ConsumerImpl> getConsumerMap() {
+        return consumerMap;
     }
 
 }

@@ -19,6 +19,7 @@ public class ClientExample {
         Produce produce = clientFactory.createProduce(8833);
         Consumer consumer = clientFactory.createConsumer("hello", "world", new MyListenerExample(), 8833);
         if (produce.isStarted()){
+            log.info("启动成功，开始消费");
             Content msg = new Content("world", "hello", "hello world!", 0, 0, SnowFlakeUtil.next());
             for (;;){
                 Content result = null;
