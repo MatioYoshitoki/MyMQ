@@ -15,7 +15,7 @@
     </modules>
 
     <properties>
-        <protobuff.version>3.6.1</protobuff.version>
+        <protobuff.version>3.16.3</protobuff.version>
         <grpc.version>1.6.1</grpc.version>
         <lombok.version>1.18.12</lombok.version>
         <netty.version>4.1.26.Final</netty.version>
